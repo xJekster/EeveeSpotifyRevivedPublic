@@ -326,39 +326,36 @@ class URLSessionTaskResumeHook: ClassHook<NSObject> {
                 writeDebugLog("[NET] Auth request: \(method) \(host)\(path) at \(elapsedInt)s")
             }
 
-            // After initial startup (30s), block login5 re-auth requests.
-            if elapsed > 30 {
-                if host.contains("login5") {
-                    writeDebugLog("[NET] Blocked login5 re-auth at \(elapsedInt)s")
-                    return
-                }
-                if host.contains("googleapis.com") && path.contains("/token") {
-                    writeDebugLog("[NET] Blocked Google OAuth refresh at \(elapsedInt)s")
-                    return
-                }
-            }
+            // NOTE: Do NOT block login5 or googleapis.com/token.
+            // login5 re-auths every ~3 min; blocking it causes a crash/panic loop.
+            // Logout protection comes from blocking session destroy, DeleteToken, etc. below.
 
             // Block outgoing DeleteToken/signup requests at network level
             // Only block after initial startup (30s) to allow fresh login/signup
             if host.contains("spotify") || host.contains("spclient") {
                 if elapsed > 30 && path.contains("DeleteToken") {
-                    writeDebugLog("[NET] Blocked DeleteToken at \(elapsedInt)s")
+                    writeDebugLog("[NET] Cancelled DeleteToken at \(elapsedInt)s")
+                    task.cancel()
                     return
                 }
                 if elapsed > 30 && path.contains("signup/public") {
-                    writeDebugLog("[NET] Blocked signup/public at \(elapsedInt)s")
+                    writeDebugLog("[NET] Cancelled signup/public at \(elapsedInt)s")
+                    task.cancel()
                     return
                 }
                 if elapsed > 30 && path.contains("pses/screenconfig") {
-                    writeDebugLog("[NET] Blocked pses/screenconfig at \(elapsedInt)s")
+                    writeDebugLog("[NET] Cancelled pses/screenconfig at \(elapsedInt)s")
+                    task.cancel()
                     return
                 }
                 if elapsed > 30 && path.contains("bootstrap/v1/bootstrap") {
-                    writeDebugLog("[NET] Blocked bootstrap re-fetch at \(elapsedInt)s")
+                    writeDebugLog("[NET] Cancelled bootstrap re-fetch at \(elapsedInt)s")
+                    task.cancel()
                     return
                 }
                 if elapsed > 30 && host.contains("apresolve") {
-                    writeDebugLog("[NET] Blocked apresolve at \(elapsedInt)s")
+                    writeDebugLog("[NET] Cancelled apresolve at \(elapsedInt)s")
+                    task.cancel()
                     return
                 }
             }
